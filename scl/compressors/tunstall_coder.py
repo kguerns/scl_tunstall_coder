@@ -4,6 +4,8 @@ from scl.core.prob_dist import ProbabilityDist
 
 from scl.utils.bitarray_utils import BitArray, uint_to_bitarray, bitarray_to_uint
 
+import numpy as np
+
 class TunstallCodebook:
     def __init__(self, prob_dist: ProbabilityDist, code_length):
         self.prob_dist = prob_dist
@@ -72,7 +74,7 @@ class TunstallEncoder(DataEncoder):
             chosen_phrase = ""
             for phrase in self.codebook:
                 if shared_prefix_length(data_block.data_list, pos, phrase) > len(chosen_phrase):
-                    chose_phrase = phrase
+                    chosen_phrase = phrase
             
             # assert chosen_phrase != ""
             encoded_bitarray += self.codebook[chosen_phrase]
@@ -92,13 +94,45 @@ class TunstallDecoder(DataDecoder):
         raise NotImplementedError
 
 
+
 class TunstallParallelDecoder(DataDecoder):
     """
     Tunstall code parallel decoder
     """
 
     def __init__(self, prob_dist: ProbabilityDist, code_length):
-        raise NotImplementedError
+        self.code_length = code_length
 
-    def decode_blcok(self, bitarray: BitArray):
-        raise NotImplementedError
+        tunstall_codebook = TunstallCodebook(prob_dist, code_length)
+        self.codebook = tunstall_codebook.get_codebook()
+
+        self.codeword_phrase_list = self._get_codeword_phrase_list()
+
+    def decode_block(self, bitarray: BitArray):
+        bit_list = bitarray.tolist()
+        assert len(bit_list) % self.code_length == 0
+
+        num_chunks = len(bit_list) / self.code_length
+
+        bitarray_np = np.array(bit_list)
+
+        codewords_np = bitarray_np.reshape(num_chunks, self.code_length)
+
+        powers = 2 ** np.arange(self.code_length-1, -1, -1)
+        indices = np.dot(codewords_np, powers)
+    
+        phrases = self.codeword_phrase_list[indices]
+        return ''.join(phrases)
+
+    
+    def _get_codeword_phrase_list(self) -> np.array:
+        codeword_phrase_dict = {}
+        for phrase, codeword in self.codebook:
+            integer = bitarray_to_uint(codeword)
+            codeword_phrase_dict[integer] = phrase
+
+        codeword_phrase_list = []
+        for i in range(len(self.codebook)):
+            codeword_phrase_list.append(codeword_phrase_dict[i])
+
+        return np.array(codeword_phrase_list)
