@@ -174,3 +174,4 @@ def test_huffman_coding_dyadic():
         is_lossless, output_len, _ = try_lossless_compression(data_block, encoder, decoder)
         assert is_lossless
         assert output_len == NUM_SAMPLES
+        
