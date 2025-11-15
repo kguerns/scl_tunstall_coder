@@ -16,6 +16,10 @@ class TunstallCodebook:
         self.code_length = code_length
         self.max_codebook_size = 2 ** code_length
 
+        # We'll still have each symbol in the alphabet
+        # in the codebook individually.
+        assert self.max_codebook_size >= len(prob_dist.alphabet)
+
         self.codebook = {}
         self._build_tunstall_codebook()
     
@@ -223,9 +227,9 @@ def test_tunstall_coder(file_path, code_length):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Testing arguments for Tunstall code.")
 
-    parser.add_argument("input_file", help="Path to the input file")
+    parser.add_argument("input_txt", help="Path to the input txt file")
     parser.add_argument("--code_length", type=int, default=10, help="Tunstall code legnth")
 
     args = parser.parse_args()
 
-    test_tunstall_coder(args.input_file, args.code_length)
+    test_tunstall_coder(args.input_txt, args.code_length)
