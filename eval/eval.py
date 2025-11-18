@@ -88,7 +88,7 @@ def test_tunstall_coder(file_path, code_length):
 
         # is_lossless, output_len, encoded_bitarray = try_lossless_compression(data_block, encoder, decoder)
         is_lossless, encoded_len, decode_time = compress_decompress(data_block, encoder, decoders[i])
-        avg_bits = encoded_len / DATA_BLOCK_SIZE
+        avg_bits = encoded_len / data_block.size
 
         assert is_lossless, f"Lossless compression failed with {decoder_names[i]}"
 
