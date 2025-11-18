@@ -54,7 +54,7 @@ def read_file_as_chars(file_path, block_size=50000):
 
 def compress_decompress(data_block, encoder, decoder):
     import time
-    print(f"data_block: {data_block.data_list[:100]}")
+    # print(f"data_block: {data_block.data_list[:100]}")
     encoded_bitarray = encoder.encode_block(data_block)
 
     # test decode
@@ -63,11 +63,11 @@ def compress_decompress(data_block, encoder, decoder):
     end = time.perf_counter()
     decoding_time = end - start
 
-    print(f"decode_block: {decoded_block.data_list[:100]}")
+    # print(f"decode_block: {decoded_block.data_list[:100]}")
     assert num_bits_consumed == len(encoded_bitarray), "Decoder did not consume all bits"
 
     # compare blocks
-    return are_blocks_equal(data_block, decoded_block), num_bits_consumed, decoding_time
+    return are_blocks_equal(data_block, decoded_block), len(encoded_bitarray), decoding_time
 
 
 def test_tunstall_coder(file_path, code_length):
@@ -87,8 +87,8 @@ def test_tunstall_coder(file_path, code_length):
     for i in range(len(decoders)):
 
         # is_lossless, output_len, encoded_bitarray = try_lossless_compression(data_block, encoder, decoder)
-        is_lossless, output_len, decode_time = compress_decompress(data_block, encoder, decoders[i])
-        avg_bits = output_len / DATA_BLOCK_SIZE
+        is_lossless, encoded_len, decode_time = compress_decompress(data_block, encoder, decoders[i])
+        avg_bits = encoded_len / DATA_BLOCK_SIZE
 
         assert is_lossless, f"Lossless compression failed with {decoder_names[i]}"
 

@@ -61,9 +61,11 @@ class TunstallCodebook:
         missing_symbols = [s for s in self.alphabet if s not in self.codebook]
         for symbol in missing_symbols:
             phrase_prob_dict[symbol] = self.prob_dist.probability(symbol)
-        
+
         # sort the dictionary by the length of the keys
-        dict(sorted(phrase_prob_dict.items(), key=lambda item: (len(item[0]), item[0])))
+        phrase_prob_dict = dict(
+            sorted(phrase_prob_dict.items(), key=lambda item: (-len(item[0]), item[0]))
+        )
 
         # assign a codeword to each phrase in codebook
         for i, phrase in enumerate(phrase_prob_dict.keys()):
@@ -85,7 +87,7 @@ class TunstallEncoder(DataEncoder):
                 if data_list[pos+i] != phrase[i]:
                     return False
             return True
-        
+
         encoded_bitarray = BitArray("")
         pos = 0
         while pos < data_block.size:
@@ -95,11 +97,11 @@ class TunstallEncoder(DataEncoder):
                 if match(data_block.data_list, pos, phrase):
                     chosen_phrase = phrase
                     break
-            
+
             # assert chosen_phrase != ""
             encoded_bitarray += self.codebook[chosen_phrase]
             pos += len(chosen_phrase)
-        
+
         return encoded_bitarray
 
 
@@ -122,7 +124,7 @@ class TunstallBaseDecoder(DataDecoder):
         for i in range(len(self.codebook)):
             codeword_phrase_list.append(codeword_phrase_dict[i])
 
-        return np.array(codeword_phrase_list)
+        return np.array(codeword_phrase_list, dtype=object)
 
 
 class TunstallSerialDecoder(TunstallBaseDecoder):
