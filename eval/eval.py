@@ -16,7 +16,7 @@ sys.path.append(TUNSTALL_DIR)
 
 from tunstall_coder import TunstallEncoder, TunstallSerialDecoder, TunstallParallelDecoder
 
-DATA_BLOCK_SIZE = 50000
+DATA_BLOCK_SIZE = 1024 * 512 # 512 KB
 
 @dataclass
 class DecodingResult:
@@ -107,12 +107,22 @@ def test_tunstall_coder(file_path, code_length):
 
 
 def main(input_folder, code_length):
+    def format_size(bytes):
+      """Convert bytes to human readable format"""
+      for unit in ['B', 'KB', 'MB', 'GB']:
+          if bytes < 1024.0:
+              return f"{bytes:.2f} {unit}"
+          bytes /= 1024.0
+      return f"{bytes:.2f} TB"
+    
     for file in os.listdir(input_folder):
         file_path = os.path.join(input_folder, file)
+        file_size = os.path.getsize(file_path)
+
+        print(f"\nWorking on {file}: {format_size(file_size)}")
 
         result = test_tunstall_coder(file_path, code_length)
-        str_to_print = f"""
-{file}:
+        str_to_print = f"""{file}: {format_size(file_size)}
     Entropy: {result.entropy:>8.4f}, Avg Bits: {result.avg_bits:>8.4f}
     Decoding time:"""
         for decode_result in result.decode_results:
