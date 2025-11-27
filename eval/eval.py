@@ -55,7 +55,11 @@ def read_file_as_chars(file_path, block_size=50000):
 def compress_decompress(data_block, encoder, decoder):
     import time
     # print(f"data_block: {data_block.data_list[:100]}")
+    start = time.perf_counter()
     encoded_bitarray = encoder.encode_block(data_block)
+    end = time.perf_counter()
+    encoding_time = end - start
+    print(f"Encoding time: {encoding_time * 1000:>10.3f} ms")
 
     # test decode
     start = time.perf_counter()
