@@ -15,6 +15,7 @@ TUNSTALL_DIR = os.path.join(CURRENT_DIR, "../scl/compressors")
 sys.path.append(TUNSTALL_DIR)
 
 from tunstall_coder import TunstallEncoder, TunstallSerialDecoder, TunstallParallelDecoder
+from tunstall_cuda_decoder import TunstallParallelCudaDecoder
 
 DATA_BLOCK_SIZE = 1024 * 512 # 512 KB
 
@@ -74,25 +75,52 @@ def compress_decompress(data_block, encoder, decoder):
     return are_blocks_equal(data_block, decoded_block), len(encoded_bitarray), decoding_time
 
 
+def decode_only(data_block, encoded_bitarray, decoder):
+    import time
+
+    # test decode
+    start = time.perf_counter()
+    decoded_block, num_bits_consumed = decoder.decode_block(encoded_bitarray)
+    end = time.perf_counter()
+    decoding_time = end - start
+
+    assert num_bits_consumed == len(encoded_bitarray), "Decoder did not consume all bits"
+
+    # compare blocks
+    return are_blocks_equal(data_block, decoded_block), decoding_time
+
+
 def test_tunstall_coder(file_path, code_length):
+    import time
     # data = read_file_as_bytes(file_path, DATA_BLOCK_SIZE)
     # data_block = DataBlock(list(data))
     data_list = read_file_as_chars(file_path, DATA_BLOCK_SIZE)
     data_block = DataBlock(data_list)
-    
+
     prob_dist = data_block.get_empirical_distribution()
     encoder = TunstallEncoder(prob_dist, code_length)
 
-    decoder_names = ["Serial Decoder", "Parallel Decoder"]
-    decoders = [TunstallSerialDecoder(prob_dist, code_length), TunstallParallelDecoder(prob_dist, code_length)]
+    # Encode once
+    start = time.perf_counter()
+    encoded_bitarray = encoder.encode_block(data_block)
+    end = time.perf_counter()
+    encoding_time = end - start
+    print(f"Encoding time: {encoding_time * 1000:>10.3f} ms")
+
+    avg_bits = len(encoded_bitarray) / data_block.size
+
+    decoder_names = ["Serial Decoder", "Parallel Decoder", "Parallel CUDA Decoder"]
+    decoders = [
+        TunstallSerialDecoder(prob_dist, code_length),
+        TunstallParallelDecoder(prob_dist, code_length),
+        TunstallParallelCudaDecoder(prob_dist, code_length)
+    ]
     assert len(decoder_names) == len(decoders)
 
     decode_results = []
     for i in range(len(decoders)):
-
-        # is_lossless, output_len, encoded_bitarray = try_lossless_compression(data_block, encoder, decoder)
-        is_lossless, encoded_len, decode_time = compress_decompress(data_block, encoder, decoders[i])
-        avg_bits = encoded_len / data_block.size
+        # Decode using pre-encoded bitarray
+        is_lossless, decode_time = decode_only(data_block, encoded_bitarray, decoders[i])
 
         assert is_lossless, f"Lossless compression failed with {decoder_names[i]}"
 
