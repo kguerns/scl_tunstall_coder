@@ -78,29 +78,38 @@ class TunstallEncoder(DataEncoder):
     def __init__(self, prob_dist: ProbabilityDist, code_length):
         tunstall_codebook = TunstallCodebook(prob_dist, code_length)
         self.codebook = tunstall_codebook.get_codebook()
+        self.max_phrase_len = max(len(p) for p in self.codebook.keys())
 
     def encode_block(self, data_block: DataBlock):
-        def match(data_list, pos, phrase):
-            if pos + len(phrase) > len(data_list):
-                return False
-            for i in range(len(phrase)):
-                if data_list[pos+i] != phrase[i]:
-                    return False
-            return True
+        data_str = ''.join(data_block.data_list)
+        data_len = len(data_str)
 
-        encoded_bitarray = BitArray("")
+        codewords = []
         pos = 0
-        while pos < data_block.size:
-            # find longest matchlegnth
-            chosen_phrase = ""
-            for phrase in self.codebook:
-                if match(data_block.data_list, pos, phrase):
-                    chosen_phrase = phrase
+
+        while pos < data_len:
+            chosen_phrase = None
+
+            for length in range(min(self.max_phrase_len, data_len - pos), 0, -1):
+                substring = data_str[pos:pos+length]
+                if substring in self.codebook:
+                    chosen_phrase = substring
                     break
 
-            # assert chosen_phrase != ""
-            encoded_bitarray += self.codebook[chosen_phrase]
+            if chosen_phrase is None:
+                chosen_phrase = data_str[pos]
+
+            codewords.append(self.codebook[chosen_phrase])
             pos += len(chosen_phrase)
+
+        total_bits = sum(len(cw) for cw in codewords)
+        encoded_bitarray = BitArray(total_bits)
+
+        bit_pos = 0
+        for codeword in codewords:
+            cw_len = len(codeword)
+            encoded_bitarray[bit_pos:bit_pos+cw_len] = codeword
+            bit_pos += cw_len
 
         return encoded_bitarray
 
@@ -133,18 +142,25 @@ class TunstallSerialDecoder(TunstallBaseDecoder):
     """
     def __init__(self, prob_dist: ProbabilityDist, code_length):
         super().__init__(prob_dist, code_length)
-    
+
     def decode_block(self, bitarray: BitArray) -> DataBlock:
-        # raise NotImplementedError
-        assert len(bitarray) % self.code_length == 0
-        phrases_list = []
-        for i in range(0, len(bitarray), self.code_length):
-            codeword_int = bitarray_to_uint(bitarray[i:i+self.code_length])
-            phrases_list.append(self.codeword_phrase_list[codeword_int])
+        num_bits = len(bitarray)
+        assert num_bits % self.code_length == 0
 
-        decoded_data_list = list(''.join(phrases_list))
+        bit_list = bitarray.tolist()
+        num_codewords = num_bits // self.code_length
+        phrases = []
 
-        return DataBlock(decoded_data_list), len(bitarray)
+        for i in range(num_codewords):
+            start_bit = i * self.code_length
+            codeword_int = 0
+            for j in range(start_bit, start_bit + self.code_length):
+                codeword_int = (codeword_int << 1) | bit_list[j]
+            phrases.append(self.codeword_phrase_list[codeword_int])
+
+        decoded_data_list = list(''.join(phrases))
+
+        return DataBlock(decoded_data_list), num_bits
 
 
 class TunstallParallelDecoder(TunstallBaseDecoder):
@@ -156,25 +172,25 @@ class TunstallParallelDecoder(TunstallBaseDecoder):
         super().__init__(prob_dist, code_length)
 
     def decode_block(self, bitarray: BitArray) -> DataBlock:
-        bit_list = bitarray.tolist()
-        assert len(bit_list) % self.code_length == 0
+        num_bits = len(bitarray)
+        assert num_bits % self.code_length == 0
 
-        num_chunks = len(bit_list) // self.code_length
+        num_chunks = num_bits // self.code_length
 
-        bitarray_np = np.array(bit_list)
+        bits_np = np.unpackbits(np.frombuffer(bitarray.tobytes(), dtype=np.uint8))
+        bits_np = bits_np[:num_bits]
 
-        codewords_np = bitarray_np.reshape(num_chunks, self.code_length)
+        codewords_np = bits_np.reshape(num_chunks, self.code_length)
 
         powers = 2 ** np.arange(self.code_length-1, -1, -1)
         indices = np.dot(codewords_np, powers)
-    
+
         phrases = self.codeword_phrase_list[indices]
 
-        phrases_list = phrases.tolist()
-        decoded_data_list = list(''.join(phrases_list))
+        decoded_data_list = list(''.join(phrases))
 
         decoded_block = DataBlock(decoded_data_list)
-        return decoded_block, len(bit_list)
+        return decoded_block, num_bits
 
 
 def compress_decompress(data_block, encoder, decoder):

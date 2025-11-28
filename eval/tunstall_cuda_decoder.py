@@ -31,10 +31,6 @@ torch::Tensor decode(
     torch::Tensor phrase_lengths,
     int code_length
 );
-
-PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
-    m.def("decode", &decode, "Decode bits to characters (CUDA)");
-}
 """
 
     cuda_module = load_inline(
@@ -81,10 +77,14 @@ class TunstallParallelCudaDecoder(TunstallBaseDecoder):
         self.phrase_lengths_tensor = torch.tensor(phrase_lengths, dtype=torch.int32, device='cuda')
 
     def decode_block(self, bitarray: BitArray) -> DataBlock:
-        bit_list = bitarray.tolist()
-        assert len(bit_list) % self.code_length == 0
+        num_bits = len(bitarray)
+        assert num_bits % self.code_length == 0
 
-        bits_tensor = torch.tensor(bit_list, dtype=torch.uint8, device='cuda')
+        bits_np = np.unpackbits(np.frombuffer(bitarray.tobytes(), dtype=np.uint8))
+        bits_np = bits_np[:num_bits]
+
+        bits_tensor_cpu = torch.from_numpy(bits_np).pin_memory()
+        bits_tensor = bits_tensor_cpu.to(device='cuda', dtype=torch.uint8, non_blocking=True)
 
         decoded_chars_tensor = self.cuda_module.decode(
             bits_tensor,
@@ -95,7 +95,7 @@ class TunstallParallelCudaDecoder(TunstallBaseDecoder):
         )
 
         decoded_chars = decoded_chars_tensor.cpu().numpy()
-        decoded_data_list = [chr(c) for c in decoded_chars]
+        decoded_data_list = list(decoded_chars.tobytes().decode('latin1'))
 
         decoded_block = DataBlock(decoded_data_list)
-        return decoded_block, len(bit_list)
+        return decoded_block, num_bits
