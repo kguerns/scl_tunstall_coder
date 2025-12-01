@@ -1,0 +1,73 @@
+# Tunstall Coding Evaluation Summary (Code Length: 12)
+# Generated: Mon Dec  1 22:22:47 2025
+
+--- File: random.bin ---
+Entropy: 7.9996
+Avg Bits/Sym: 11.3525
+Compression Ratio: 0.7046881720430107
+Encoding Time (ms):    394.093
+Decoding Time (ms):
+	Serial Decoder      :    666.944
+	Parallel Decoder    :     37.178
+	Parallel CUDA Decoder:     25.706
+
+--- File: shakespeare.txt ---
+Entropy: 4.5779
+Avg Bits/Sym: 5.5738
+Compression Ratio: 1.4352808484310924
+Encoding Time (ms):    229.193
+Decoding Time (ms):
+	Serial Decoder      :    318.963
+	Parallel Decoder    :     13.937
+	Parallel CUDA Decoder:      6.876
+
+--- File: code.cpp ---
+Entropy: 5.0499
+Avg Bits/Sym: 5.9274
+Compression Ratio: 1.3496645712020348
+Encoding Time (ms):    242.797
+Decoding Time (ms):
+	Serial Decoder      :    328.379
+	Parallel Decoder    :     12.804
+	Parallel CUDA Decoder:      4.294
+
+--- File: video.mp4 ---
+Entropy: 7.4918
+Avg Bits/Sym: 10.2841
+Compression Ratio: 0.7778967226845247
+Encoding Time (ms):    414.399
+Decoding Time (ms):
+	Serial Decoder      :    590.987
+	Parallel Decoder    :     25.900
+	Parallel CUDA Decoder:      4.816
+
+--- File: audio.mp3 ---
+Entropy: 7.7123
+Avg Bits/Sym: 10.2850
+Compression Ratio: 0.7778292089490237
+Encoding Time (ms):    347.662
+Decoding Time (ms):
+	Serial Decoder      :    589.717
+	Parallel Decoder    :     26.239
+	Parallel CUDA Decoder:      4.694
+
+--- File: image.jpg ---
+Entropy: 7.8581
+Avg Bits/Sym: 10.8189
+Compression Ratio: 0.7394482007711988
+Encoding Time (ms):    370.509
+Decoding Time (ms):
+	Serial Decoder      :    635.370
+	Parallel Decoder    :     27.251
+	Parallel CUDA Decoder:      6.665
+
+--- File: dummy.json ---
+Entropy: 4.7466
+Avg Bits/Sym: 5.8972
+Compression Ratio: 1.3565791584514513
+Encoding Time (ms):    210.564
+Decoding Time (ms):
+	Serial Decoder      :    318.190
+	Parallel Decoder    :     16.136
+	Parallel CUDA Decoder:      4.271
+
