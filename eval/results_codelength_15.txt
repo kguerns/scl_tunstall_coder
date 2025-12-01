@@ -1,0 +1,66 @@
+# Tunstall Coding Evaluation Summary (Code Length: 15)
+# Generated: Sun Nov 30 15:52:59 2025
+
+--- File: image.jpg ---
+Entropy: 7.8581
+Avg Bits/Sym: 9.2057
+Compression Ratio: 0.8690228449008176
+Encoding Time (ms):    270.197
+Decoding Time (ms):
+	Serial Decoder      :    421.134
+	Parallel Decoder    :     32.538
+
+--- File: random.bin ---
+Entropy: 7.9996
+Avg Bits/Sym: 9.9906
+Compression Ratio: 0.8007544950877635
+Encoding Time (ms):    291.814
+Decoding Time (ms):
+	Serial Decoder      :    518.125
+	Parallel Decoder    :     34.404
+
+--- File: code.cpp ---
+Entropy: 5.0499
+Avg Bits/Sym: 5.6464
+Compression Ratio: 1.4168390294984503
+Encoding Time (ms):    211.045
+Decoding Time (ms):
+	Serial Decoder      :    273.571
+	Parallel Decoder    :     12.333
+
+--- File: audio.mp3 ---
+Entropy: 7.7123
+Avg Bits/Sym: 9.1327
+Compression Ratio: 0.8759731546427494
+Encoding Time (ms):    253.145
+Decoding Time (ms):
+	Serial Decoder      :    447.392
+	Parallel Decoder    :     23.499
+
+--- File: dummy.json ---
+Entropy: 4.7466
+Avg Bits/Sym: 5.3459
+Compression Ratio: 1.4964719146423482
+Encoding Time (ms):    200.545
+Decoding Time (ms):
+	Serial Decoder      :    226.786
+	Parallel Decoder    :     10.945
+
+--- File: video.mp4 ---
+Entropy: 7.4918
+Avg Bits/Sym: 9.2953
+Compression Ratio: 0.8606481068242561
+Encoding Time (ms):    324.957
+Decoding Time (ms):
+	Serial Decoder      :    445.926
+	Parallel Decoder    :     23.893
+
+--- File: shakespeare.txt ---
+Entropy: 4.5779
+Avg Bits/Sym: 5.2703
+Compression Ratio: 1.5179429274559832
+Encoding Time (ms):    209.973
+Decoding Time (ms):
+	Serial Decoder      :    245.881
+	Parallel Decoder    :     12.005
+

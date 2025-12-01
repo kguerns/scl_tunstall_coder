@@ -8,6 +8,7 @@ from dataclasses import dataclass
 import argparse
 import os
 import sys
+import time
 
 # Directory of the current file (eval/eval.py)
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -28,6 +29,8 @@ class DecodingResult:
 class Result:
     entropy: float
     avg_bits: float
+    compression_ratio: float
+    encoding_time: float
     decode_results: list
 
 def read_file_as_bytes(file_path, block_size=50000):
@@ -109,6 +112,9 @@ def test_tunstall_coder(file_path, code_length):
 
     avg_bits = len(encoded_bitarray) / data_block.size
 
+    # 8 bits per symbol / avg bits per symbol
+    compression_ratio = 8 / avg_bits
+
     decoder_names = ["Serial Decoder", "Parallel Decoder", "Parallel CUDA Decoder"]
     decoders = [
         TunstallSerialDecoder(prob_dist, code_length),
@@ -133,6 +139,8 @@ def test_tunstall_coder(file_path, code_length):
     result = Result(
         entropy=prob_dist.entropy,
         avg_bits=avg_bits,
+        compression_ratio=compression_ratio,
+        encoding_time=encoding_time,
         decode_results=decode_results
     )
     return result
@@ -147,6 +155,7 @@ def main(input_folder, code_length):
           bytes /= 1024.0
       return f"{bytes:.2f} TB"
     
+    all_results = []
     for file in os.listdir(input_folder):
         file_path = os.path.join(input_folder, file)
         file_size = os.path.getsize(file_path)
@@ -161,6 +170,28 @@ def main(input_folder, code_length):
             str_to_print += f"""
         {decode_result.decoder_name:<20}: {decode_result.decode_time * 1000:>10.3f} ms"""
         print(str_to_print)
+        all_results.append((file, result))
+
+    # save all results to a file
+    output_filename = f"results_codelength_{code_length}.txt"
+
+    with open(output_filename, 'w') as f:
+        f.write(f"# Tunstall Coding Evaluation Summary (Code Length: {code_length})\n")
+        f.write(f"# Generated: {time.ctime()}\n\n")
+
+        for file_name, result in all_results:
+            f.write(f"--- File: {file_name} ---\n")
+            f.write(f"Entropy: {result.entropy:.4f}\n")
+            f.write(f"Avg Bits/Sym: {result.avg_bits:.4f}\n")
+            f.write(f"Compression Ratio: {result.compression_ratio}\n")
+            f.write(f"Encoding Time (ms): {result.encoding_time* 1000:>10.3f}\n")
+
+            f.write("Decoding Time (ms):\n")
+            for decode_result in result.decode_results:
+                f.write(f"\t{decode_result.decoder_name:<20}: {decode_result.decode_time * 1000:>10.3f}\n")
+            f.write("\n")
+
+    print(f"Wrote all results to {output_filename}")
 
 
 if __name__ == "__main__":
