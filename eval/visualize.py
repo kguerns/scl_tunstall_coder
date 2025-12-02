@@ -46,15 +46,18 @@ def parse_file_content(file_content: str, code_length: int) -> list:
             # Extract decoding times (handle Serial and Parallel specifically)
             serial_time_match = re.search(r'Serial Decoder\s*:\s*([\d\.]+)', file_block)
             parallel_time_match = re.search(r'Parallel Decoder\s*:\s*([\d\.]+)', file_block)
+            cuda_parallel_time_match = re.search(r'Parallel CUDA Decoder\s*:\s*([\d\.]+)', file_block)
 
-            if not serial_time_match or not parallel_time_match:
+            if not serial_time_match or not parallel_time_match or not cuda_parallel_time_match:
                  raise ValueError("Missing Serial or Parallel Decoder time.")
                  
             serial_time = float(serial_time_match.group(1))
             parallel_time = float(parallel_time_match.group(1))
+            cuda_parallel_time = float(cuda_parallel_time_match.group(1))
             
             # Calculate speedup
             speedup_factor = serial_time / parallel_time if parallel_time > 0 else 1.0
+            cuda_speedup_factor = serial_time / cuda_parallel_time if cuda_parallel_time > 0 else 1.0
             
             # Calculate Compression Ratio (CR)
             compression_ratio = BITS_PER_ORIGINAL_SYMBOL / avg_bits
@@ -68,8 +71,10 @@ def parse_file_content(file_content: str, code_length: int) -> list:
                 'CompressionRatio': compression_ratio,
                 'EncodingTime_ms': encoding_time,
                 'SerialTime_ms': serial_time,
-                'ParallelTime_ms': parallel_time,
+                'CPU ParallelTime_ms': parallel_time,
+                'GPU ParallelTime_ms': cuda_parallel_time,
                 'Speedup': speedup_factor,
+                'CUDA Speedup': cuda_speedup_factor,
             })
 
         except (AttributeError, ValueError) as e:
@@ -214,53 +219,114 @@ def generate_plots(df: pd.DataFrame):
     fig2.savefig('tunstall_compression_ratio.png', bbox_inches='tight', dpi=300)
     plt.close(fig2)
 
-    # --- Plot 3: Decoding Speedup by Code Length (Parallel vs. Serial) ---
+    # --- Plot 3: Decoding Speedup by Code Length (Parallel vs. Serial vs. GPU) ---
     fig3, ax3 = plt.subplots(figsize=(12, 7))
-    
-    # Plot individual speedup curves (noisy lines) with transparency
+
+    # -----------------------------------------
+    # 1. Per-file CPU curves (circle marker)
+    # -----------------------------------------
     sns.lineplot(
-        x='CodeLength', 
-        y='Speedup', 
-        hue='File', 
-        marker='o', 
-        data=df, 
-        palette='tab10', 
-        alpha=0.4,
+        x='CodeLength',
+        y='Speedup',
+        hue='File',
+        style='Decoder',
+        markers={"CPU": "o"},
+        dashes=False,
+        data=df.assign(Decoder="CPU"),
+        palette='tab10',
+        alpha=0.40,
         ax=ax3
     )
 
-    # Plot the MEAN speedup across all files for clarity (The actual smooth trend)
+    # -----------------------------------------
+    # 2. Per-file GPU curves (square marker)
+    # -----------------------------------------
     sns.lineplot(
-        x='CodeLength', 
-        y='Speedup', 
-        data=df.groupby('CodeLength', as_index=False)['Speedup'].mean(),
-        marker='X', 
-        color='black', 
-        linestyle='--', 
-        linewidth=2, 
-        label='Mean Speedup Across All Files', 
+        x='CodeLength',
+        y='CUDA Speedup',
+        hue='File',
+        style='Decoder',
+        markers={"GPU": "s"},
+        dashes=False,
+        data=df.assign(Decoder="GPU"),
+        palette='tab10',
+        alpha=0.70,
         ax=ax3
     )
-    
+
+    # -----------------------------------------
+    # 3. Mean CPU speedup (black X dashed)
+    # -----------------------------------------
+    sns.lineplot(
+        x='CodeLength',
+        y='Speedup',
+        data=df.groupby('CodeLength', as_index=False)['Speedup'].mean(),
+        marker='X',
+        color='black',
+        linestyle='--',
+        linewidth=2,
+        label='Mean CPU Speedup',
+        ax=ax3
+    )
+
+    # -----------------------------------------
+    # 4. Mean GPU speedup (blue X dashed)
+    # -----------------------------------------
+    sns.lineplot(
+        x='CodeLength',
+        y='CUDA Speedup',
+        data=df.groupby('CodeLength', as_index=False)['CUDA Speedup'].mean(),
+        marker='X',
+        color='blue',
+        linestyle='--',
+        linewidth=2,
+        label='Mean GPU Speedup',
+        ax=ax3
+    )
+
+    # -----------------------------------------
+    # 5. Global averages (horizontal lines)
+    # -----------------------------------------
+    ax3.axhline(df['Speedup'].mean(),
+                color='red', linestyle=':', label='Global CPU Average')
+    ax3.axhline(df['CUDA Speedup'].mean(),
+                color='purple', linestyle=':', label='Global GPU Average')
+
+    # -----------------------------------------
+    # Axes labels and formatting
+    # -----------------------------------------
     ax3.set_title('Decoding Speedup Factor vs. Code Length', fontsize=16, fontweight='bold')
     ax3.set_xlabel('Code Length L', fontsize=12)
-    ax3.set_ylabel('Speedup Factor (x) [Serial/Parallel]', fontsize=12)
+    ax3.set_ylabel('Speedup Factor (x)', fontsize=12)
     ax3.set_xticks(df['CodeLength'].unique())
-    ax3.axhline(df['Speedup'].mean(), color='red', linestyle=':', label='Overall Average Speedup (Global)')
-    
-    # Adjust legend to show only the File names and the Mean Speedup line clearly
+
+    # -----------------------------------------
+    # Final legend
+    # -----------------------------------------
+    # First legend = CPU/GPU mean & global lines
+    leg1 = ax3.legend(title="Decoder Summary", loc='upper left')
+
+    # Second legend = per-file colors
     handles, labels = ax3.get_legend_handles_labels()
-    # Filter out the black mean line to ensure it is prominent
-    ax3.legend(handles[-len(df['File'].unique())-1:], labels[-len(df['File'].unique())-1:], title='File')
-    
+    print(f'handles: {handles}')
+    print(f'labels: {labels}')
+    file_colors = {lab: h for lab, h in zip(labels, handles) if lab in df['File'].unique()}
+    print(f"fine_colors: {file_colors}")
+    ax3.legend(file_colors.values(), file_colors.keys(),
+            title="Files", loc='upper right')
+
+    # Keep first legend
+    # ax3.add_artist(leg1)
+
     print("Saving Decoding Speedup plots to tunstall_decoding_speedup_by_cl.png")
     fig3.savefig('tunstall_decoding_speedup_by_cl.png', bbox_inches='tight', dpi=300)
     plt.close(fig3)
+
     
     # --- Plot 4: Overall Average Decoding Time per Decoder Across All Code Lengths ---
     df_avg_time = df.melt(
         id_vars=['File', 'CodeLength'], 
-        value_vars=['SerialTime_ms', 'ParallelTime_ms'],
+        value_vars=['SerialTime_ms', 'CPU ParallelTime_ms', 'GPU ParallelTime_ms'],
         var_name='Decoder', 
         value_name='Time_ms'
     ).groupby('Decoder')['Time_ms'].mean().reset_index()
@@ -274,13 +340,14 @@ def generate_plots(df: pd.DataFrame):
         x='Decoder', 
         y='Time_ms', 
         data=df_avg_time, 
-        palette={'Serial Decoder': '#fb923c', 'Parallel Decoder': '#059669'},
+        palette={'Serial Decoder': '#fb923c', 'CPU Parallel Decoder': '#059669', 'GPU Parallel Decoder': '#3b82f6'},
         ax=ax4
     )
 
-    avg_speedup = df_avg_time.loc[df_avg_time['Decoder'] == 'Serial Decoder', 'Time_ms'].iloc[0] / df_avg_time.loc[df_avg_time['Decoder'] == 'Parallel Decoder', 'Time_ms'].iloc[0]
+    avg_speedup = df_avg_time.loc[df_avg_time['Decoder'] == 'Serial Decoder', 'Time_ms'].iloc[0] / df_avg_time.loc[df_avg_time['Decoder'] == 'CPU Parallel Decoder', 'Time_ms'].iloc[0]
+    avg_gpu_speedup = df_avg_time.loc[df_avg_time['Decoder'] == 'Serial Decoder', 'Time_ms'].iloc[0] / df_avg_time.loc[df_avg_time['Decoder'] == 'GPU Parallel Decoder', 'Time_ms'].iloc[0]
 
-    ax4.set_title(f'Overall Average Decoding Time (Speedup: x{avg_speedup:.1f})', fontsize=14, fontweight='bold')
+    ax4.set_title(f'Overall Average Decoding Time (CPU Speedup: {avg_speedup:.1f}x, GPU Speedup: {avg_gpu_speedup:.1f}x)', fontsize=14, fontweight='bold')
     ax4.set_xlabel('Decoder Type', fontsize=12)
     ax4.set_ylabel('Average Decoding Time (ms)', fontsize=12)
     
