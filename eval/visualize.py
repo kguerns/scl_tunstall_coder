@@ -335,12 +335,14 @@ def generate_plots(df: pd.DataFrame):
 
     # Rename for clearer legend in the plot
     df_avg_time['Decoder'] = df_avg_time['Decoder'].str.replace('Time_ms', ' Decoder')
-
+    decoder_order = ['Serial Decoder', 'CPU Parallel Decoder', 'GPU Parallel Decoder']
+    
     sns.barplot(
         x='Decoder', 
         y='Time_ms', 
         data=df_avg_time, 
         palette={'Serial Decoder': '#fb923c', 'CPU Parallel Decoder': '#059669', 'GPU Parallel Decoder': '#3b82f6'},
+        order=decoder_order,
         ax=ax4
     )
 
@@ -352,11 +354,16 @@ def generate_plots(df: pd.DataFrame):
     ax4.set_ylabel('Average Decoding Time (ms)', fontsize=12)
     
     # Add labels on top of the bars
-    for index, row in df_avg_time.iterrows():
+    for i, p in enumerate(ax4.patches):
+        decoder_name = decoder_order[i] 
+        
+        # Get the 'Time_ms' value for this specific decoder
+        time_value = df_avg_time.loc[df_avg_time['Decoder'] == decoder_name, 'Time_ms'].iloc[0]
+
         ax4.text(
-            index, 
-            row.Time_ms + 10, 
-            f'{row.Time_ms:.1f} ms', 
+            p.get_x() + p.get_width() / 2.,
+            p.get_height() + 5,
+            f'{time_value:.1f} ms',
             color='black', 
             ha='center', 
             fontweight='bold'
