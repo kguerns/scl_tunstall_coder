@@ -1,6 +1,10 @@
-# Implementation
+# Stanford Compression Library with Tunstall Coding
 
-All implementations are in scl/compressors/tunstall_coder.py and in eval/ folder.
+Tunstall coding (serial and parallel CPU) is implemented in `scl/compressors/tunstall_coder.py`. 
+
+The `eval/` folder is used for testing and evaluation. It also contains the parallel GPU code. Example datasets are located in the `data/` folder.
+
+Run `./run.eval.sh` to run all experiments for code lengths 8 to 18. Final results and visuals are located in the `eval/cuda/` directory. 
 
 
 # Stanford Compression Library
